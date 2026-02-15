@@ -9,7 +9,8 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # читаем SELECTEL_PROJECT_NAME
-SELECTEL_PROJECT_NAME=$(grep '^SELECTEL_PROJECT_NAME=' "$ENV_FILE" | cut -d= -f2)
+SELECTEL_PROJECT_NAME=$(grep '^SELECTEL_PROJECT_NAME=' "$ENV_FILE" | cut -d= -f2 | tr -d '\r')
+
 
 if [ -z "$SELECTEL_PROJECT_NAME" ]; then
   echo "SELECTEL_PROJECT_NAME не найден в .env"
@@ -68,6 +69,6 @@ systemctl daemon-reload
 systemctl enable "$TIMER_NAME"
 systemctl start "$TIMER_NAME"
 
-echo "Готово."
-echo "Проверка:"
+
+echo "Служба есть, дял проверки:"
 echo "systemctl status $TIMER_NAME"

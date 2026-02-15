@@ -27,7 +27,8 @@
 ```bash
 curl -L https://github.com/BURAKKU1XD/selectel-wildcard-ssl-autoupdate/archive/refs/heads/main.tar.gz | tar xz \
 && cd selectel-wildcard-ssl-autoupdate-main \
-&& cp -n example.env .env
+&& cp -n example.env .env \
+&& chmod +x create_service.sh
 ```
 
 ### 1?. Загрузка в `/usr/local/bin/`
@@ -36,7 +37,8 @@ curl -L https://github.com/BURAKKU1XD/selectel-wildcard-ssl-autoupdate/archive/r
 cd /usr/local/bin/ \
 && curl -L https://github.com/BURAKKU1XD/selectel-wildcard-ssl-autoupdate/archive/refs/heads/main.tar.gz | tar xz \
 && cd selectel-wildcard-ssl-autoupdate-main \
-&& cp -n example.env .env
+&& cp -n example.env .env \
+&& chmod +x create_service.sh
 ```
 ### 2. Заполнить .env по шаблону
 ```env
@@ -70,7 +72,7 @@ SYSTEMCTL_BIN=systemctl
 ```
 ### 3. Создать сервис
 ```bash
-chmod +x create_service.sh
+./create_service.sh
 ```
 Запуск раз в день и при запуске сервера.
 
