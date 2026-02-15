@@ -68,9 +68,18 @@ fi
 
 # --- применяем ---
 systemctl daemon-reload
+
+# сразу выполняем сервис один раз
+echo "Запускаю службу сразу..."
+systemctl start "$SERVICE_NAME"
+
+# включаем и запускаем таймер
 systemctl enable "$TIMER_NAME"
 systemctl start "$TIMER_NAME"
 
-
-echo "Служба есть, дял проверки:"
+echo "Готово."
+echo "Проверка таймера:"
 echo "systemctl status $TIMER_NAME"
+echo ""
+echo "Проверка последнего запуска службы:"
+echo "systemctl status $SERVICE_NAME"
