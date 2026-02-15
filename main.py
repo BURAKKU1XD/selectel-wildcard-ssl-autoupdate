@@ -22,6 +22,7 @@ from utils.parsers import  *
 from utils.selectel_api import *
 
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Selectel SSL auto-renew + nginx seamless switch")
     parser.add_argument("--dry-run", action="store_true", help="Ничего не пишем на диск и не перезагружаем nginx")
@@ -55,10 +56,15 @@ def main() -> int:
     cert_store_dir = env.get("CERT_STORE_DIR", "/etc/nginx/ssl")
     http_timeout = int(env.get("HTTP_TIMEOUT", "30"))
 
-    # какие пути мы вообще разрешаем менять
-    managed_prefixes = env.get("MANAGED_PREFIXES", cert_store_dir)
-    managed_prefixes_list = [p.strip() for p in managed_prefixes.split(",") if p.strip()]
+    # дополнительные папки, в которых лежат cert/key для других сервисов
+    extra_cert_dirs_raw = env.get("EXTRA_CERT_DIRS", "")
+    extra_cert_dirs = [p.strip() for p in extra_cert_dirs_raw.split(",") if p.strip()]
 
+    # какие пути мы вообще разрешаем менять
+    # если MANAGED_PREFIXES не задан — разрешаем CERT_STORE_DIR + EXTRA_CERT_DIRS
+    default_prefixes = [cert_store_dir] + extra_cert_dirs if extra_cert_dirs else [cert_store_dir]
+    managed_prefixes = env.get("MANAGED_PREFIXES", ",".join(default_prefixes))
+    managed_prefixes_list = [p.strip() for p in managed_prefixes.split(",") if p.strip()]
     # На сколько "должен быть новее" remote, чтобы обновлять (в минутах)
     min_diff_minutes = int(env.get("MIN_EXPIRE_DIFF_MINUTES", "60"))
 
@@ -81,14 +87,24 @@ def main() -> int:
 
         latest = build_latest_cert_map(items)
 
-        pairs = parse_nginx_ssl_pairs(nginx_bin)
-        if not pairs:
-            logging.warning("Не нашёл ни одной пары ssl_certificate/ssl_certificate_key в nginx конфиге.")
+        pairs_nginx = parse_nginx_ssl_pairs(nginx_bin) or []
+        pairs_extra = scan_extra_ssl_pairs(extra_cert_dirs) if extra_cert_dirs else []
+
+        if not pairs_nginx and not pairs_extra:
+            logging.warning("Не нашёл ни одной пары SSL ни в nginx, ни в EXTRA_CERT_DIRS.")
             return 0
 
-        logging.info("Нашёл SSL-пары в nginx: %d", len(pairs))
+        # объединяем пары без дублей; если пара есть в nginx — считаем её nginx (для reload)
+        nginx_set = set((os.path.abspath(c), os.path.abspath(k)) for c, k in pairs_nginx)
+        extra_set = set((os.path.abspath(c), os.path.abspath(k)) for c, k in pairs_extra)
+        all_pairs = sorted(nginx_set.union(extra_set))
 
-        for cert_path, key_path in pairs:
+        logging.info("Нашёл SSL-пары: nginx=%d, extra=%d, итого=%d", len(nginx_set), len(extra_set), len(all_pairs))
+
+        updated_nginx_any = False
+
+        for cert_path, key_path in all_pairs:
+            is_nginx_pair = (cert_path, key_path) in nginx_set
             if not os.path.exists(cert_path):
                 logging.warning("cert_path не существует: %s (пропускаю)", cert_path)
                 continue
@@ -190,10 +206,14 @@ def main() -> int:
             atomic_update_link_or_file(key_path, new_key_file, now_stamp, args.dry_run)
 
             updated_any = True
+            if is_nginx_pair:
+                updated_nginx_any = True
 
-        # reload/restart nginx если были обновления
-        if updated_any:
+        # reload/restart nginx — только если обновлялись nginx-пары
+        if updated_nginx_any:
             nginx_reload_or_restart(systemctl_bin, nginx_bin, args.dry_run)
+        elif updated_any:
+            logging.info("Сертификаты обновлены (extra), nginx не трогаю.")
         else:
             logging.info("Обновлений не требуется.")
 

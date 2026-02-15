@@ -59,6 +59,8 @@ CERT_STORE_DIR=/etc/nginx/ssl
 # Разрешённые префиксы путей, которые скрипт имеет право менять (через запятую)
 # (по умолчанию берётся CERT_STORE_DIR)
 MANAGED_PREFIXES=/etc/nginx/ssl,/etc/letsencrypt/live
+# Папки где нужно тоже обновлять домены (папка = домен)
+# EXTRA_CERT_DIRS=/etc/myservice/certs,/srv/another-service/tls
 
 # Если remote отличается от local меньше чем на N минут — не обновлять
 MIN_EXPIRE_DIFF_MINUTES=720
