@@ -40,6 +40,8 @@ Type=oneshot
 WorkingDirectory=${WORKDIR}
 ExecStart=/usr/bin/python3 ${WORKDIR}/main.py
 User=root
+StandardOutput=journal
+StandardError=journal
 EOF
 else
   echo "Служба уже существует"
